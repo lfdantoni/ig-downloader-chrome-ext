@@ -1,141 +1,144 @@
 # IG Media Downloader
 
-Extensión de Chrome (Manifest V3) para descargar imágenes y videos de Instagram en máxima calidad. Soporta posts, carruseles, reels y stories.
+Chrome Extension (Manifest V3) to download images and videos from Instagram at maximum quality. Supports posts, carousels, reels, and stories.
 
-## Funcionalidades
+## Features
 
-- **Extracción en máxima calidad** — selecciona automáticamente la resolución más alta disponible
-- **Soporte completo** — posts individuales, carruseles (múltiples imágenes), reels y stories
-- **Galería en popup** — previsualización de todos los medios detectados en una cuadrícula
-- **Descarga individual** — botón de descarga en cada tarjeta de la galería
-- **Selección múltiple** — checkboxes para seleccionar medios específicos y descargarlos como ZIP
-- **Descarga total en ZIP** — empaqueta todos los medios de la publicación en un solo archivo ZIP
-- **Barra de progreso** — indicador visual durante la creación del ZIP
-- **Tema oscuro** — interfaz consistente con la estética de Instagram
+- **Max quality extraction** — automatically selects the highest available resolution
+- **Full support** — single posts, carousels (multiple images), reels, and stories
+- **Popup gallery** — preview all detected media in a grid layout
+- **Open in new tab** — button to open media at full quality in a new tab
+- **Individual download** — download button on each gallery card
+- **Multi-select** — checkboxes to select specific media and download them as a ZIP
+- **Download all as ZIP** — bundle all media from a post into a single ZIP file
+- **Progress bar** — visual indicator during ZIP creation
+- **Dark theme** — interface consistent with Instagram's aesthetic
 
-## Estructura del Proyecto
+## Project Structure
 
 ```
 ig-downloader-chrome-ext/
-├── manifest.json                 # Manifiesto MV3 de la extensión
-├── lib/jszip.min.js              # Librería JSZip para creación de ZIPs
-├── icons/icon{16,48,128}.png     # Iconos de la extensión
-├── content/extractor.js          # Content script: detección de página + extracción de medios
+├── manifest.json                 # MV3 extension manifest
+├── lib/jszip.min.js              # Bundled JSZip library for ZIP creation
+├── icons/icon{16,48,128}.png     # Extension icons
+├── content/extractor.js          # Content script: page detection + media extraction
 ├── popup/
-│   ├── popup.html                # Estructura de la galería
-│   ├── popup.css                 # Estilos (tema oscuro)
-│   └── popup.js                  # Renderizado, selección y triggers de descarga
-└── background/service-worker.js  # Manejo de descargas y creación de ZIPs
+│   ├── popup.html                # Gallery layout
+│   ├── popup.css                 # Styles (dark theme)
+│   └── popup.js                  # Rendering, selection, and download triggers
+└── background/service-worker.js  # Download handler + ZIP creation
 ```
 
-## Arquitectura
+## Architecture
 
-### Flujo de Comunicación
+### Communication Flow
 
 ```
-Popup ──sendMessage──▸ Content Script (extrae medios de la página de IG)
-Popup ──sendMessage──▸ Service Worker (dispara descargas / creación de ZIP)
-Service Worker ──sendMessage──▸ Popup (actualizaciones de progreso)
+Popup ──sendMessage──▸ Content Script (extracts media from the IG page)
+Popup ──sendMessage──▸ Service Worker (triggers downloads / ZIP creation)
+Service Worker ──sendMessage──▸ Popup (progress updates)
 ```
 
-### Estrategia de Extracción (3 capas con fallback)
+### Extraction Strategy (3-layer fallback)
 
-El content script (`content/extractor.js`) utiliza un enfoque de 3 capas para maximizar la compatibilidad:
+The content script (`content/extractor.js`) uses a 3-layer approach to maximize compatibility:
 
-| Capa | Método | Descripción |
-|------|--------|-------------|
-| 1 | **REST API** | `GET /p/{shortcode}/?__a=1&__d=dis` — retorna JSON con `image_versions2.candidates[]` y `video_versions[]` |
-| 2 | **GraphQL API** | `POST /api/graphql` con `doc_id` — retorna `xdt_shortcode_media` con URLs de máxima calidad |
-| 3 | **DOM Scraping** | Parsea elementos `<video>` e `<img srcset>` directamente del HTML de la página |
+| Layer | Method | Description |
+|-------|--------|-------------|
+| 1 | **REST API** | `GET /p/{shortcode}/?__a=1&__d=dis` — returns JSON with `image_versions2.candidates[]` and `video_versions[]` |
+| 2 | **GraphQL API** | `POST /api/graphql` with `doc_id` — returns `xdt_shortcode_media` with max quality URLs |
+| 3 | **DOM Scraping** | Parses `<video>` elements and `<img srcset>` directly from the page HTML |
 
-Para **Stories** se usa una ruta diferente:
-1. `/api/v1/users/web_profile_info/` para obtener el ID del usuario
-2. `/api/v1/feed/reels_media/?reel_ids={id}` para obtener los items del story
+For **Stories**, a different route is used:
+1. `/api/v1/users/web_profile_info/` to get the user ID
+2. `/api/v1/feed/reels_media/?reel_ids={id}` to fetch story items
 
-Todas las llamadas API usan `credentials: 'include'` (cookies de sesión del usuario) + headers de autenticación de Instagram (`X-IG-App-ID`, CSRF token).
+All API calls use `credentials: 'include'` (user's session cookies) + Instagram authentication headers (`X-IG-App-ID`, CSRF token).
 
-### Selección de Máxima Calidad
+### Max Quality Selection
 
-Para cada medio, se selecciona el candidato con el mayor `width * height` de los arrays `image_versions2.candidates[]` o `video_versions[]`.
+For each media item, the candidate with the largest `width * height` is selected from the `image_versions2.candidates[]` or `video_versions[]` arrays.
 
-### Creación de ZIP (Service Worker)
+### ZIP Creation (Service Worker)
 
-- Usa la librería **JSZip** cargada via `importScripts`
-- Descarga cada URL de medio como blob en paralelo (concurrencia limitada a 4)
-- Envía actualizaciones de progreso al popup durante la creación
-- Dispara `chrome.downloads.download()` con `saveAs: true` para que el usuario elija dónde guardar
+- Uses the **JSZip** library loaded via `importScripts`
+- Fetches each media URL as a blob in parallel (concurrency limited to 4)
+- Sends progress updates to the popup during creation
+- Triggers `chrome.downloads.download()` with `saveAs: true` so the user can choose where to save
 
-### Detección de Tipo de Página
+### Page Type Detection
 
-| Tipo | Patrón de URL |
-|------|---------------|
+| Type | URL Pattern |
+|------|-------------|
 | Post | `/p/{shortcode}/` |
-| Reel | `/reel/{shortcode}/` o `/reels/{shortcode}/` |
+| Reel | `/reel/{shortcode}/` or `/reels/{shortcode}/` |
 | Story | `/stories/{username}/{storyId}/` |
 
-## Instalación
+## Installation
 
-### Requisitos
+### Requirements
 
-- Google Chrome (o navegador basado en Chromium)
-- Sesión activa en Instagram (debes estar logueado)
+- Google Chrome (or Chromium-based browser)
+- Active Instagram session (you must be logged in)
 
-### Pasos
+### Steps
 
-1. **Clonar o descargar** el repositorio:
+1. **Clone or download** the repository:
    ```bash
-   git clone <url-del-repositorio>
+   git clone <repository-url>
    ```
 
-2. Abrir Chrome y navegar a:
+2. Open Chrome and navigate to:
    ```
    chrome://extensions/
    ```
 
-3. Activar el **Modo de desarrollador** (esquina superior derecha)
+3. Enable **Developer mode** (top right corner)
 
-4. Click en **"Cargar extensión sin empaquetar"** (Load unpacked)
+4. Click **"Load unpacked"**
 
-5. Seleccionar la carpeta `ig-downloader-chrome-ext`
+5. Select the `ig-downloader-chrome-ext` folder
 
-6. La extensión aparecerá en la barra de herramientas con su icono
+6. The extension will appear in the toolbar with its icon
 
-## Uso
+## Usage
 
-### Descarga Individual
+### Individual Download
 
-1. Navega a cualquier post, reel o story de Instagram
-2. Haz click en el icono de la extensión en la barra de herramientas
-3. Se abrirá un popup con la galería de medios detectados
-4. Haz click en el botón **↓** de cualquier tarjeta para descargar ese medio
+1. Navigate to any Instagram post, reel, or story
+2. Click the extension icon in the toolbar
+3. A popup will open with a gallery of detected media
+4. Hover over a card to reveal two action buttons:
+   - **↗** — opens the media at full quality in a new tab
+   - **↓** — downloads the media directly
 
-### Descarga Selectiva (ZIP)
+### Selective Download (ZIP)
 
-1. Haz click en las tarjetas para seleccionar los medios que deseas
-2. El contador de selección se actualiza en el footer
-3. Click en **"Download Selected (ZIP)"** para descargar los medios seleccionados en un archivo ZIP
+1. Click on cards to select the media you want
+2. The selection counter updates in the footer
+3. Click **"Download Selected (ZIP)"** to download the selected media as a ZIP file
 
-### Descarga Total (ZIP)
+### Download All (ZIP)
 
-1. Click en **"Download All (ZIP)"** para descargar todos los medios de la publicación en un solo ZIP
-2. La barra de progreso muestra el estado de la descarga y creación del ZIP
+1. Click **"Download All (ZIP)"** to download all media from the post in a single ZIP
+2. The progress bar shows the download and ZIP creation status
 
-### Seleccionar Todo
+### Select All
 
-- Usa el checkbox **"Select All"** en el footer para seleccionar o deseleccionar todos los medios
+- Use the **"Select All"** checkbox in the footer to select or deselect all media
 
-## Permisos
+## Permissions
 
-| Permiso | Motivo |
-|---------|--------|
-| `activeTab` | Acceder a la pestaña activa para inyectar el content script |
-| `downloads` | Disparar descargas de archivos |
-| `host_permissions` en `instagram.com` | Ejecutar el content script y realizar llamadas API |
-| `host_permissions` en CDNs de Instagram | Descargar los archivos de medios desde los servidores CDN |
+| Permission | Reason |
+|------------|--------|
+| `activeTab` | Access the active tab to inject the content script |
+| `downloads` | Trigger file downloads |
+| `host_permissions` on `instagram.com` | Run the content script and make API calls |
+| `host_permissions` on Instagram CDNs | Download media files from CDN servers |
 
-## Limitaciones
+## Limitations
 
-- **Requiere sesión activa**: debes estar logueado en Instagram para que las APIs funcionen
-- **Posts privados**: solo puedes descargar medios de cuentas que puedas ver con tu sesión
-- **Rate limiting**: Instagram puede limitar las solicitudes si se hacen demasiadas en poco tiempo
-- **Cambios en la API**: Instagram puede cambiar sus endpoints internos, lo que podría requerir actualizar la extensión
+- **Requires active session**: you must be logged into Instagram for the APIs to work
+- **Private posts**: you can only download media from accounts visible with your session
+- **Rate limiting**: Instagram may throttle requests if too many are made in a short time
+- **API changes**: Instagram may change its internal endpoints, which could require updating the extension
