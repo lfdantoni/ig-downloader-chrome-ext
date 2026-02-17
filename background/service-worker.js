@@ -1,5 +1,15 @@
 importScripts("../lib/jszip.min.js");
 
+const FETCH_TIMEOUT_MS = 30000;
+
+function fetchWithTimeout(url, options = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  return fetch(url, { ...options, signal: controller.signal }).finally(() =>
+    clearTimeout(timer)
+  );
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.action === "downloadSingle") {
     chrome.downloads.download({
@@ -49,7 +59,7 @@ async function createAndDownloadZip(items, sender) {
         const filename = `ig_media_${item.index + 1}.${ext}`;
 
         try {
-          const resp = await fetch(item.url);
+          const resp = await fetchWithTimeout(item.url);
           if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
           const blob = await resp.blob();
           zip.file(filename, blob);

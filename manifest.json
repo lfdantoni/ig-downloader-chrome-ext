@@ -1,8 +1,11 @@
 {
   "manifest_version": 3,
   "name": "IG Media Downloader",
+  "short_name": "IG Downloader",
   "version": "1.0.0",
   "description": "Download images and videos from Instagram posts, stories, and reels at maximum quality.",
+  "author": "IG Media Downloader",
+  "homepage_url": "https://github.com/user/ig-downloader-chrome-ext",
   "permissions": [
     "activeTab",
     "downloads"
@@ -12,8 +15,13 @@
     "https://*.cdninstagram.com/*",
     "https://*.fbcdn.net/*"
   ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'",
+    "sandbox": "sandbox allow-scripts; script-src 'self'"
+  },
   "action": {
     "default_popup": "popup/popup.html",
+    "default_title": "Download Instagram media",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",

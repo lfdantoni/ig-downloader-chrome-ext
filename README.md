@@ -142,3 +142,22 @@ For each media item, the candidate with the largest `width * height` is selected
 - **Private posts**: you can only download media from accounts visible with your session
 - **Rate limiting**: Instagram may throttle requests if too many are made in a short time
 - **API changes**: Instagram may change its internal endpoints, which could require updating the extension
+
+## Disclaimer
+
+This extension is provided for personal use only. It is intended to help users download media they own or have explicit permission to use.
+
+- Downloading content from Instagram may violate [Instagram's Terms of Service](https://help.instagram.com/581066165581870).
+- Users are solely responsible for ensuring they have the right to download and use any media obtained through this extension.
+- Respect copyright laws and intellectual property rights. Do not redistribute others' content without permission.
+- The authors of this extension are not responsible for any misuse or legal consequences arising from its use.
+
+By using this extension, you acknowledge and accept these terms.
+
+## Privacy Policy
+
+This extension does not collect, store, or transmit any personal data. All operations happen locally in your browser. See [PRIVACY_POLICY.md](PRIVACY_POLICY.md) for full details.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE). JSZip is used under the MIT License — see the LICENSE file for third-party attribution.

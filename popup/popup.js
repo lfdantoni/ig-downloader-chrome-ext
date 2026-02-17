@@ -18,6 +18,20 @@
   let mediaItems = [];
   let selectedSet = new Set();
 
+  // ── Disclaimer ───────────────────────────────────────────────────────
+
+  const disclaimer = document.getElementById("disclaimer");
+  const disclaimerClose = document.getElementById("disclaimerClose");
+
+  if (localStorage.getItem("ig_dl_disclaimer_dismissed")) {
+    disclaimer.classList.add("hidden");
+  }
+
+  disclaimerClose.addEventListener("click", () => {
+    disclaimer.classList.add("hidden");
+    localStorage.setItem("ig_dl_disclaimer_dismissed", "1");
+  });
+
   // ── Init ─────────────────────────────────────────────────────────────
 
   async function init() {

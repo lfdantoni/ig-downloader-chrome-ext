@@ -26,6 +26,16 @@
     return m ? decodeURIComponent(m[1]) : "";
   }
 
+  const FETCH_TIMEOUT_MS = 15000;
+
+  function fetchWithTimeout(url, options = {}) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    return fetch(url, { ...options, signal: controller.signal }).finally(() =>
+      clearTimeout(timer)
+    );
+  }
+
   const IG_APP_ID = "936619743392459";
 
   function igHeaders() {
@@ -47,7 +57,7 @@
   // ── REST API extraction (/p/{code}/?__a=1&__d=dis) ──────────────────
 
   async function extractViaREST(shortcode) {
-    const resp = await fetch(
+    const resp = await fetchWithTimeout(
       `https://www.instagram.com/p/${shortcode}/?__a=1&__d=dis`,
       { credentials: "include", headers: igHeaders() }
     );
@@ -93,7 +103,7 @@
 
   async function extractViaMediaInfo(mediaId) {
     try {
-      const resp = await fetch(
+      const resp = await fetchWithTimeout(
         `https://www.instagram.com/api/v1/media/${mediaId}/info/`,
         { credentials: "include", headers: igHeaders() }
       );
@@ -209,7 +219,7 @@
           hoisted_reply_id: null,
         });
 
-        const resp = await fetch("https://www.instagram.com/api/graphql", {
+        const resp = await fetchWithTimeout("https://www.instagram.com/api/graphql", {
           method: "POST",
           credentials: "include",
           headers: {
@@ -298,7 +308,9 @@
             const items = parseMediaItem(media);
             if (items && items.length) return items;
           }
-        } catch {}
+        } catch (e) {
+          // JSON parse failed for this script tag, skip it
+        }
       }
 
       // Try window.__additionalData or _sharedData
@@ -423,7 +435,7 @@
 
   async function extractStory(username, storyId) {
     // Step 1: Get user ID
-    const profileResp = await fetch(
+    const profileResp = await fetchWithTimeout(
       `https://www.instagram.com/api/v1/users/web_profile_info/?username=${encodeURIComponent(username)}`,
       { credentials: "include", headers: igHeaders() }
     );
@@ -434,7 +446,7 @@
     if (!userId) return null;
 
     // Step 2: Get story reel
-    const reelResp = await fetch(
+    const reelResp = await fetchWithTimeout(
       `https://www.instagram.com/api/v1/feed/reels_media/?reel_ids=${userId}`,
       { credentials: "include", headers: igHeaders() }
     );
