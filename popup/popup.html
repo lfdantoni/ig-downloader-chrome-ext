@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <h1>IG Media Downloader</h1>
+    <span id="pageType" class="badge"></span>
+  </header>
+
+  <div id="status">
+    <div class="spinner"></div>
+    <p>Extracting media...</p>
+  </div>
+
+  <div id="error" class="hidden">
+    <p id="errorMsg"></p>
+  </div>
+
+  <div id="gallery" class="hidden"></div>
+
+  <div id="progressWrap" class="hidden">
+    <div id="progressBar"><div id="progressFill"></div></div>
+    <p id="progressText">Preparing ZIP...</p>
+  </div>
+
+  <footer id="footer" class="hidden">
+    <div class="footer-left">
+      <label class="select-all-label">
+        <input type="checkbox" id="selectAll"> Select All
+      </label>
+      <span id="selectedCount">0 selected</span>
+    </div>
+    <div class="footer-right">
+      <button id="btnDownloadSelected" disabled>Download Selected (ZIP)</button>
+      <button id="btnDownloadAll">Download All (ZIP)</button>
+    </div>
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>
