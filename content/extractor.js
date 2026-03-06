@@ -654,6 +654,7 @@
 
   function injectButtonOnLink(anchor) {
     if (anchor.dataset.igDlInjected) return;
+    if (anchor.closest('div[role="dialog"]')) return;
 
     const m = anchor.href.match(/\/(?:p|reel)\/([A-Za-z0-9_-]+)/);
     if (!m) return;
@@ -685,6 +686,7 @@
   }
 
   function scanAndInject() {
+    if (getPageType() !== "unknown") return;
     document.querySelectorAll('a[href*="/p/"], a[href*="/reel/"]')
       .forEach(injectButtonOnLink);
   }
