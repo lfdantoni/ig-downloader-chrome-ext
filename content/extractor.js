@@ -582,4 +582,134 @@
       return true; // async response
     }
   });
+
+  // ── Feed injector ─────────────────────────────────────────────────────
+
+  function buildFilenameForInjector(item, idx, total) {
+    const ext = item.type === "video" ? "mp4" : "jpg";
+    const user = item.username || "ig";
+    if (item.taken_at) {
+      const d = new Date(item.taken_at * 1000);
+      const date = d.toISOString().slice(0, 10);
+      const suffix = total > 1 ? `_${idx + 1}` : "";
+      return `${user}_${date}_${item.taken_at}${suffix}.${ext}`;
+    }
+    return `ig_media_${idx + 1}.${ext}`;
+  }
+
+  async function downloadFromShortcode(shortcode, btn) {
+    btn.textContent = "⏳";
+    btn.disabled = true;
+
+    try {
+      let items = null;
+
+      try {
+        items = await extractViaMediaInfoFromShortcode(shortcode);
+      } catch (e) {
+        console.log("[IG Downloader] Feed injector: MediaInfo failed:", e.message);
+      }
+
+      if (!items || !items.length) {
+        try {
+          items = await extractViaREST(shortcode);
+        } catch (e) {
+          console.log("[IG Downloader] Feed injector: REST failed:", e.message);
+        }
+      }
+
+      if (!items || !items.length) {
+        try {
+          items = await extractViaGraphQL(shortcode);
+        } catch (e) {
+          console.log("[IG Downloader] Feed injector: GraphQL failed:", e.message);
+        }
+      }
+
+      if (!items || !items.length) throw new Error("No media found");
+
+      if (items.length === 1) {
+        const filename = buildFilenameForInjector(items[0], 0, 1);
+        chrome.runtime.sendMessage({ action: "downloadSingle", url: items[0].url, filename });
+      } else {
+        const zipItems = items.map((item, idx) => ({
+          url: item.url,
+          type: item.type,
+          username: item.username,
+          taken_at: item.taken_at,
+          index: idx,
+        }));
+        chrome.runtime.sendMessage({ action: "downloadZip", items: zipItems });
+      }
+
+      btn.textContent = "✓";
+    } catch (e) {
+      console.log("[IG Downloader] Feed injector download failed:", e.message);
+      btn.textContent = "✗";
+    } finally {
+      btn.disabled = false;
+      setTimeout(() => { btn.textContent = "⬇"; }, 2000);
+    }
+  }
+
+  function injectButtonOnLink(anchor) {
+    if (anchor.dataset.igDlInjected) return;
+
+    const m = anchor.href.match(/\/(?:p|reel)\/([A-Za-z0-9_-]+)/);
+    if (!m) return;
+    const shortcode = m[1];
+
+    anchor.dataset.igDlInjected = "1";
+
+    // Use the anchor itself as positioning context so the button stays
+    // within its bounds — this avoids being clipped by any parent overflow:hidden
+    if (getComputedStyle(anchor).position === "static") {
+      anchor.style.position = "relative";
+    }
+    if (getComputedStyle(anchor).overflow === "hidden") {
+      anchor.style.overflow = "visible";
+    }
+
+    const btn = document.createElement("button");
+    btn.className = "ig-dl-feed-btn";
+    btn.textContent = "⬇";
+    btn.title = "Download";
+
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      downloadFromShortcode(shortcode, btn);
+    });
+
+    anchor.appendChild(btn);
+  }
+
+  function scanAndInject() {
+    document.querySelectorAll('a[href*="/p/"], a[href*="/reel/"]')
+      .forEach(injectButtonOnLink);
+  }
+
+  function initFeedInjector() {
+    if (getPageType() !== "unknown") return;
+
+    const style = document.createElement("style");
+    style.textContent = `
+      .ig-dl-feed-btn {
+        position: absolute; bottom: 6px; right: 6px;
+        width: 28px; height: 28px; border-radius: 50%;
+        border: none; background: rgba(139,92,246,0.85); color: #fff;
+        font-size: 14px; cursor: pointer; z-index: 100;
+        display: flex; align-items: center; justify-content: center;
+      }
+      .ig-dl-feed-btn:hover { background: #7c3aed; }
+    `;
+    document.head.appendChild(style);
+
+    scanAndInject();
+
+    const observer = new MutationObserver(scanAndInject);
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+
+  initFeedInjector();
 })();
