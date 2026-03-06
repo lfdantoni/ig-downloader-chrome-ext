@@ -149,23 +149,27 @@
 
   function parseMediaItem(item) {
     const results = [];
+    const meta = {
+      username: item.user?.username || item.owner?.username || null,
+      taken_at: item.taken_at || null,
+    };
 
     if (item.carousel_media) {
       for (const slide of item.carousel_media) {
-        results.push(parseSingleMedia(slide));
+        results.push(parseSingleMedia(slide, meta));
       }
     } else if (item.edge_sidecar_to_children?.edges) {
       for (const edge of item.edge_sidecar_to_children.edges) {
-        results.push(parseSingleMedia(edge.node));
+        results.push(parseSingleMedia(edge.node, meta));
       }
     } else {
-      results.push(parseSingleMedia(item));
+      results.push(parseSingleMedia(item, meta));
     }
 
     return results.filter(Boolean);
   }
 
-  function parseSingleMedia(item) {
+  function parseSingleMedia(item, meta = {}) {
     const isVideo =
       item.media_type === 2 ||
       item.is_video === true ||
@@ -197,6 +201,8 @@
       type: isVideo ? "video" : "image",
       width: item.original_width || item.dimensions?.width || 0,
       height: item.original_height || item.dimensions?.height || 0,
+      username: meta.username || item.user?.username || null,
+      taken_at: meta.taken_at || item.taken_at || null,
     };
   }
 
@@ -270,19 +276,23 @@
 
   function parseGraphQLMedia(media) {
     const results = [];
+    const meta = {
+      username: media.owner?.username || null,
+      taken_at: media.taken_at_timestamp || null,
+    };
 
     if (media.edge_sidecar_to_children?.edges) {
       for (const edge of media.edge_sidecar_to_children.edges) {
-        results.push(parseGraphQLNode(edge.node));
+        results.push(parseGraphQLNode(edge.node, meta));
       }
     } else {
-      results.push(parseGraphQLNode(media));
+      results.push(parseGraphQLNode(media, meta));
     }
 
     return results.filter(Boolean);
   }
 
-  function parseGraphQLNode(node) {
+  function parseGraphQLNode(node, meta = {}) {
     const isVideo = node.is_video || node.__typename === "GraphVideo" || node.__typename === "XDTGraphVideo";
 
     return {
@@ -291,6 +301,8 @@
       type: isVideo ? "video" : "image",
       width: node.dimensions?.width || 0,
       height: node.dimensions?.height || 0,
+      username: meta.username || node.owner?.username || null,
+      taken_at: meta.taken_at || node.taken_at_timestamp || null,
     };
   }
 
@@ -458,21 +470,21 @@
       // Try alternative response shape
       const reelData = reelJson?.reels?.[userId];
       if (reelData?.items) {
-        return parseStoryItems(reelData.items, storyId);
+        return parseStoryItems(reelData.items, storyId, username);
       }
       return null;
     }
 
     const items = reels[0]?.items || [];
-    return parseStoryItems(items, storyId);
+    return parseStoryItems(items, storyId, username);
   }
 
-  function parseStoryItems(items, targetStoryId) {
+  function parseStoryItems(items, targetStoryId, username) {
     const results = [];
 
     for (const item of items) {
       // If a specific story ID is given, we still return all items but mark the target
-      const parsed = parseSingleMedia(item);
+      const parsed = parseSingleMedia(item, { username });
       if (parsed) {
         parsed.isTarget = String(item.pk) === targetStoryId || String(item.id)?.split("_")[0] === targetStoryId;
         results.push(parsed);

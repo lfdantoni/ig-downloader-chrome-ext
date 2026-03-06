@@ -26,6 +26,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 });
 
+function buildFilename(item, total) {
+  const ext = item.type === "video" ? "mp4" : "jpg";
+  const user = item.username || "ig";
+  if (item.taken_at) {
+    const d = new Date(item.taken_at * 1000);
+    const date = d.toISOString().slice(0, 10);
+    const suffix = total > 1 ? `_${item.index + 1}` : "";
+    return `${user}_${date}_${item.taken_at}${suffix}.${ext}`;
+  }
+  return `ig_media_${item.index + 1}.${ext}`;
+}
+
 async function createAndDownloadZip(items, sender) {
   const zip = new JSZip();
   const total = items.length;
@@ -55,8 +67,7 @@ async function createAndDownloadZip(items, sender) {
     async function processQueue() {
       while (queue.length > 0) {
         const item = queue.shift();
-        const ext = item.type === "video" ? "mp4" : "jpg";
-        const filename = `ig_media_${item.index + 1}.${ext}`;
+        const filename = buildFilename(item, total);
 
         try {
           const resp = await fetchWithTimeout(item.url);

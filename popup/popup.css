@@ -257,6 +257,7 @@ footer {
   background: #1a1a1a;
   position: sticky;
   bottom: 0;
+  z-index: 10;
   gap: 8px;
   flex-wrap: wrap;
 }
@@ -297,6 +298,15 @@ footer button {
   font-weight: 600;
   cursor: pointer;
   transition: background 0.15s;
+}
+
+#btnOpenAllTabs {
+  background: #1e3a5f;
+  color: #93c5fd;
+}
+
+#btnOpenAllTabs:hover {
+  background: #1e40af;
 }
 
 #btnDownloadSelected {

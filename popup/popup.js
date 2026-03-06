@@ -11,6 +11,7 @@
   const selectedCount = document.getElementById("selectedCount");
   const btnDownloadSelected = document.getElementById("btnDownloadSelected");
   const btnDownloadAll = document.getElementById("btnDownloadAll");
+  const btnOpenAllTabs = document.getElementById("btnOpenAllTabs");
   const progressWrap = document.getElementById("progressWrap");
   const progressFill = document.getElementById("progressFill");
   const progressText = document.getElementById("progressText");
@@ -140,8 +141,9 @@
     gallery.classList.remove("hidden");
     footer.classList.remove("hidden");
 
-    // Show "Download All" only when >1 item; for single item the individual button suffices
+    // Show batch controls only when >1 item; for single item the individual buttons suffice
     if (mediaItems.length <= 1) {
+      btnOpenAllTabs.classList.add("hidden");
       btnDownloadAll.classList.add("hidden");
       btnDownloadSelected.classList.add("hidden");
       selectAllCb.parentElement.classList.add("hidden");
@@ -184,20 +186,38 @@
 
   // ── Downloads ────────────────────────────────────────────────────────
 
-  function downloadSingle(item, idx) {
+  function buildFilename(item, idx, total) {
     const ext = item.type === "video" ? "mp4" : "jpg";
+    const user = item.username || "ig";
+    if (item.taken_at) {
+      const d = new Date(item.taken_at * 1000);
+      const date = d.toISOString().slice(0, 10);
+      const suffix = total > 1 ? `_${idx + 1}` : "";
+      return `${user}_${date}_${item.taken_at}${suffix}.${ext}`;
+    }
+    return `ig_media_${idx + 1}.${ext}`;
+  }
+
+  function downloadSingle(item, idx) {
     chrome.runtime.sendMessage({
       action: "downloadSingle",
       url: item.url,
-      filename: `ig_media_${idx + 1}.${ext}`,
+      filename: buildFilename(item, idx, mediaItems.length),
     });
   }
 
+  btnOpenAllTabs.addEventListener("click", () => {
+    mediaItems.forEach((item) => chrome.tabs.create({ url: item.url, active: false }));
+  });
+
   btnDownloadSelected.addEventListener("click", () => {
     if (selectedSet.size === 0) return;
-    const items = [...selectedSet].sort().map((idx) => ({
+    const indices = [...selectedSet].sort();
+    const items = indices.map((idx) => ({
       url: mediaItems[idx].url,
       type: mediaItems[idx].type,
+      username: mediaItems[idx].username,
+      taken_at: mediaItems[idx].taken_at,
       index: idx,
     }));
     requestZipDownload(items);
@@ -207,6 +227,8 @@
     const items = mediaItems.map((item, idx) => ({
       url: item.url,
       type: item.type,
+      username: item.username,
+      taken_at: item.taken_at,
       index: idx,
     }));
     requestZipDownload(items);
