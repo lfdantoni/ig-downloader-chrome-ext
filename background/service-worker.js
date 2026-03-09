@@ -14,7 +14,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.action === "downloadSingle") {
     chrome.downloads.download({
       url: msg.url,
-      filename: msg.filename || "ig_media.jpg",
+      filename: msg.filename || "media.jpg",
       saveAs: true,
     });
     return;
@@ -24,18 +24,33 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     createAndDownloadZip(msg.items, sender);
     return;
   }
+
+  if (msg.action === "fetchSyndication") {
+    // Fetch runs in the service worker context, which bypasses CORS restrictions.
+    const token = ((Number(msg.tweetId) / 1e15) * Math.PI)
+      .toString(36)
+      .replace(/(0+|\.)/g, "");
+    const url =
+      `https://cdn.syndication.twimg.com/tweet-result` +
+      `?id=${msg.tweetId}&lang=en&token=${token}`;
+    fetchWithTimeout(url)
+      .then((resp) => (resp.ok ? resp.json() : Promise.reject(new Error(`HTTP ${resp.status}`))))
+      .then((json) => sendResponse({ ok: true, json }))
+      .catch((err) => sendResponse({ ok: false, error: err.message }));
+    return true; // async response
+  }
 });
 
 function buildFilename(item, total) {
   const ext = item.type === "video" ? "mp4" : "jpg";
-  const user = item.username || "ig";
-  if (item.taken_at) {
+  const prefix = item.prefix || "";
+  if (item.username && item.taken_at) {
     const d = new Date(item.taken_at * 1000);
     const date = d.toISOString().slice(0, 10);
     const suffix = total > 1 ? `_${item.index + 1}` : "";
-    return `${user}_${date}_${item.taken_at}${suffix}.${ext}`;
+    return `${prefix}${item.username}_${date}_${item.taken_at}${suffix}.${ext}`;
   }
-  return `ig_media_${item.index + 1}.${ext}`;
+  return `${prefix}media_${item.index + 1}.${ext}`;
 }
 
 async function createAndDownloadZip(items, sender) {
@@ -75,7 +90,7 @@ async function createAndDownloadZip(items, sender) {
           const blob = await resp.blob();
           zip.file(filename, blob);
         } catch (err) {
-          console.error(`[IG Downloader] Failed to fetch ${filename}:`, err);
+          console.error(`[Media Downloader] Failed to fetch ${filename}:`, err);
           // Add a placeholder text file for failed downloads
           zip.file(
             `${filename}.error.txt`,
@@ -110,13 +125,13 @@ async function createAndDownloadZip(items, sender) {
 
     chrome.downloads.download({
       url: dataUrl,
-      filename: `ig_media_${timestamp}.zip`,
+      filename: `media_${timestamp}.zip`,
       saveAs: true,
     });
 
     chrome.runtime.sendMessage({ action: "zipComplete" }).catch(() => {});
   } catch (err) {
-    console.error("[IG Downloader] ZIP creation failed:", err);
+    console.error("[Media Downloader] ZIP creation failed:", err);
     chrome.runtime.sendMessage({
       action: "zipError",
       error: err.message,

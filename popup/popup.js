@@ -35,11 +35,19 @@
 
   // ── Init ─────────────────────────────────────────────────────────────
 
+  function isSupportedPlatform(url) {
+    return (
+      url.includes("instagram.com") ||
+      url.includes("x.com") ||
+      url.includes("twitter.com")
+    );
+  }
+
   async function init() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-    if (!tab?.url?.includes("instagram.com")) {
-      showError("Navigate to Instagram to use this extension.");
+    if (!tab?.url || !isSupportedPlatform(tab.url)) {
+      showError("Navigate to Instagram or X (Twitter) to use this extension.");
       return;
     }
 
@@ -47,7 +55,7 @@
       const response = await chrome.tabs.sendMessage(tab.id, { action: "extractMedia" });
 
       if (!response) {
-        showError("Could not communicate with the page. Try refreshing Instagram.");
+        showError("Could not communicate with the page. Try refreshing it.");
         return;
       }
 
@@ -65,7 +73,7 @@
 
       renderGallery();
     } catch (err) {
-      showError("Could not extract media. Try refreshing the Instagram page.");
+      showError("Could not extract media. Try refreshing the page.");
     }
   }
 
@@ -140,15 +148,6 @@
 
     gallery.classList.remove("hidden");
     footer.classList.remove("hidden");
-
-    // Show batch controls only when >1 item; for single item the individual buttons suffice
-    if (mediaItems.length <= 1) {
-      btnOpenAllTabs.classList.add("hidden");
-      btnDownloadAll.classList.add("hidden");
-      btnDownloadSelected.classList.add("hidden");
-      selectAllCb.parentElement.classList.add("hidden");
-      selectedCount.classList.add("hidden");
-    }
   }
 
   // ── Selection logic ──────────────────────────────────────────────────
@@ -188,14 +187,14 @@
 
   function buildFilename(item, idx, total) {
     const ext = item.type === "video" ? "mp4" : "jpg";
-    const user = item.username || "ig";
-    if (item.taken_at) {
+    const prefix = item.prefix || "";
+    if (item.username && item.taken_at) {
       const d = new Date(item.taken_at * 1000);
       const date = d.toISOString().slice(0, 10);
       const suffix = total > 1 ? `_${idx + 1}` : "";
-      return `${user}_${date}_${item.taken_at}${suffix}.${ext}`;
+      return `${prefix}${item.username}_${date}_${item.taken_at}${suffix}.${ext}`;
     }
-    return `ig_media_${idx + 1}.${ext}`;
+    return `${prefix}media_${idx + 1}.${ext}`;
   }
 
   function downloadSingle(item, idx) {
@@ -218,6 +217,7 @@
       type: mediaItems[idx].type,
       username: mediaItems[idx].username,
       taken_at: mediaItems[idx].taken_at,
+      prefix: mediaItems[idx].prefix,
       index: idx,
     }));
     requestZipDownload(items);
@@ -229,6 +229,7 @@
       type: item.type,
       username: item.username,
       taken_at: item.taken_at,
+      prefix: item.prefix,
       index: idx,
     }));
     requestZipDownload(items);

@@ -5,7 +5,15 @@
       "Bash(curl:*)",
       "Bash(python3:*)",
       "Bash(node:*)",
-      "Bash(file:*)"
+      "Bash(file:*)",
+      "Bash(touch /e/Code/ig-downloader-chrome-ext/content/ig-strategy.js)",
+      "Bash(touch /e/Code/ig-downloader-chrome-ext/content/x-strategy.js)",
+      "Bash(grep -n \"function\\\\s*fetchWithTimeout\\\\|function\\\\s*getCookie\\\\|function\\\\s*bestCandidate\\\\|function\\\\s*bestXVideoVariant\\\\|function\\\\s*bestVideoVariant\" /e/Code/ig-downloader-chrome-ext/content/*.js /e/Code/ig-downloader-chrome-ext/background/*.js)",
+      "Bash(grep -n \"getPageType\\\\|detectXPageType\" /e/Code/ig-downloader-chrome-ext/content/*.js)",
+      "Bash(grep -n \"parseSyndicationResult\\\\|parseTweetResult\" /e/Code/ig-downloader-chrome-ext/content/*.js)",
+      "Bash(grep -n \"toMaxQualityImageUrl\\\\|findTweetResults\\\\|xDateToTimestamp\" /e/Code/ig-downloader-chrome-ext/content/*.js)",
+      "Bash(grep -n \"buildFilename\\\\|buildIGFeedFilename\\\\|buildXFeedFilename\" /e/Code/ig-downloader-chrome-ext/content/*.js /e/Code/ig-downloader-chrome-ext/popup/*.js /e/Code/ig-downloader-chrome-ext/background/*.js)",
+      "Bash(grep -n \"window\\\\.\\\\|importScripts\" /e/Code/ig-downloader-chrome-ext/content/*.js /e/Code/ig-downloader-chrome-ext/background/*.js)"
     ]
   }
 }

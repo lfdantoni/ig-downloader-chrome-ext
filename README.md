@@ -1,4 +1,4 @@
-# IG Media Downloader
+# IG & X Media Downloader
 
 Chrome Extension (Manifest V3) to download images and videos from Instagram at maximum quality. Supports posts, carousels, reels, and stories.
 
